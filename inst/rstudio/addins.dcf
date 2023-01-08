@@ -1,0 +1,4 @@
+Name: Abstract Code to New Function
+Description: Changes highlighted code to new function with abstracted arguments
+Binding: abstractify
+Interactive: false

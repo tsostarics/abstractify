@@ -1,0 +1,122 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,message = FALSE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# abstractify
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+Have you ever been tinkering in R and realize after writing some block of code
+"Oh this should really be a helper function at this point" ?
+You then begin the process of wrapping `foo <- function(...) { ... }`
+around your code, then you try to run `foo` only to find that you forgot to
+include something in your function arguments that your block of code needed?
+This addin allows you to highlight a block of code, run `abstractify()` from
+the command palette, and the block will be wrapped with a new function 
+definition *but with all arguments that need to be specified*.
+
+## Installation
+
+You can install the development version of abstractify like so:
+
+``` r
+# Either or
+devtools::install_github("tsostarics/abstractify")
+remotes::install_github("tsostarics/abstractify")
+```
+
+## Example
+
+Usage is hard to show in just text, I'll need to make one of those terminal
+recording gifs later.
+But the basic idea is illustrated below. 
+Say we've been playing around with `mtcars` and want to filter by the number
+of cyls, count the number of remaining cars, then add 2.
+We might have an R script with the following lines:
+
+```{r example}
+library(abstractify)
+library(dplyr)
+
+necessary_cyls <- c(3, 4)
+fudge_factor <- 2
+
+mtcars |> 
+  dplyr::filter(cyl %in% necessary_cyls) |> 
+  dplyr::summarize(n = n() + fudge_factor)
+```
+
+At this point we might want to make a function that does the filtering
+and summarizing for some other dataset that we have, parameterized by
+arbitrary values of `necessary_cyls` and `fudge_factor` which currently exist
+just as global variables in our R session.
+We can highlight the last three lines and run `abstractify()` to get the
+following automatically:
+
+```r
+new_function <- function(mtcars,
+                         necessary_cyls,
+                         fudge_factor) {
+  mtcars |> 
+  dplyr::filter(cyl %in% necessary_cyls) |> 
+  dplyr::summarize(n = n() + fudge_factor)
+}
+```
+
+If we instead wanted `fudge_factor` to stay constant in the helper function,
+then we would highlight from `fudge_factor <- 2` to `...+ fudge_factor)` and
+run `abstractify()` in the same way:
+
+```r
+new_function <- function(mtcars,
+                         necessary_cyls) {
+  fudge_factor <- 2
+  
+  mtcars |>
+    dplyr::filter(cyl %in% necessary_cyls) |> 
+  dplyr::summarize(n = n() + fudge_factor)
+}
+```
+
+Now the helper is only parameterized in terms of `mtcars` and `necessary_cyls`,
+which you can rename within the scope of the helper function by highlighting
+and using the existing Rename Symbol In Scope command 
+(default: `Ctrl+Shift+Alt+M`).
+Finally, again since it's hard to show just in text, after running `abstractify()`
+the function name (`new_function`) will be highlighted so that you can
+immediately start writing the actual desired function name.
+
+### Usage notes/assumptions
+
+I made this because I frequently find myself needing to turn scratchwork
+into helper functions for my research (e.g., creating a big ggplot, then needing
+to make the same plot with different datasets).
+As such, `abstractify()` (currently) makes a few assumptions when identifying
+variables to abstract over:
+`abstractify()` will abstract over any symbols it finds so long as they 
+*exist in the global environment*.
+The following things won't work perfectly & i'll try to extend or fix things
+later.
+
+ - Running `abstractify()` on a codeblock within a function will miss objects
+ that exist only in the scope of the function
+ - Instances where you would expect an error to be thrown because an object
+ can't be found will likely result in `abstractify()` not catching it. This has
+ the benefit of skipping over something like `cyl` in `filter(mtcars, cyl==3)`
+ but has the downside of skipping over `foo` in `filter(mtcars, cyl==foo)` if
+ you never ran `foo <- 3` in your R session.
+ - An error is thrown if using `abstractify()` in a qmd file due to a known
+ error with the rstudioapi when running the `reformatCode` command in files
+ other than `.R` files.
